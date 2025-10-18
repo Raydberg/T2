@@ -1,3 +1,14 @@
 spring:
   application:
     name: config-server
+  cloud:
+    config:
+      server:
+        git:
+          uri: "https://github.com/Raydberg/t2-secrets.git"
+          default-label: main
+          timeout: 5
+          clone-on-start: true
+
+server:
+  port: 7777

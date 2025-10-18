@@ -1,0 +1,11 @@
+FROM openjdk:21-jdk-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y curl
+COPY pom.xml .
+COPY mvnw .
+COPY .mvn .mvn
+RUN chmod +x mvnw
+RUN ./mvnw dependency:go-offline
+COPY src ./src
+EXPOSE 8761
+CMD ["./mvnw", "spring-boot:run"]

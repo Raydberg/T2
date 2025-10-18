@@ -1,0 +1,141 @@
+name: EXAMEN-T2
+services:
+#  db:
+#    container_name: db-fitdesk
+#    image: postgres:16.1
+#    restart: always
+#    ports:
+#      - "5432:5432"
+#    volumes:
+#      - db-data:/var/lib/postgresql/data
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: postgres
+#      PGADMIN_DEFAULT_EMAIL: fitdesk@admin.com
+#      PGADMIN_DEFAULT_PASSWORD: fitdesk
+#    networks:
+#      - t2-network
+
+  config-server:
+    container_name: config-server-t2
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "7777:7777"
+    volumes:
+      - ./config-server:/app
+    environment:
+      - CONFIG_SERVER_PORT=7777
+      - MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+    command: sh -c "chmod +x /app/mvnw && exec /app/mvnw -q  spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    networks:
+      - t2-network
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - "-f"
+        - http://localhost:7777/actuator/health
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  eureka-server:
+    container_name: eureka-server-t2
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8761:8761"
+    networks:
+      - t2-network
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - "-f"
+        - http://localhost:8761/actuator/health
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  gateway:
+    container_name: gateway-t2
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "9090:9090"
+      - "5001:5005"
+    volumes:
+      - ./gateway:/app
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:7777
+      - MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+    command: sh -c "chmod +x /app/mvnw && exec /app/mvnw -q  spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    networks:
+      - t2-network
+
+  msvc-user:
+    container_name: msvc-user
+    build:
+      context: ./msvc-user
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "9091:9091"
+      - "5002:5005"
+    volumes:
+      - ./msvc-user:/app
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:7777
+      - MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    command: sh -c "chmod +x /app/mvnw && exec /app/mvnw -q  spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    networks:
+      - t2-network
+
+  msvc-product:
+    container_name: msvc-product
+    build:
+      context: ./msvc-product
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "5005:5005"
+    volumes:
+      - ./msvc-product:/app
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:7777
+      - MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
+    command: sh -c "chmod +x /app/mvnw && exec /app/mvnw -q  spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    networks:
+      - t2-network
+
+
+networks:
+  t2-network:
+    driver: bridge
