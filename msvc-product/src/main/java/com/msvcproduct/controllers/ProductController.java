@@ -9,8 +9,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.concurrent.CompletableFuture;
+
 @RestController
-@RequestMapping("/products")
+@RequestMapping("/api/products")
 @RequiredArgsConstructor
 @Slf4j
 public class ProductController {
@@ -20,17 +22,25 @@ public class ProductController {
 
     @GetMapping
     public ResponseEntity<ProductResponseDto> getAllProducts() {
+
+
         ProductResponseDto response = productService.getAllProducts();
         return ResponseEntity.ok(response);
     }
 
 
     @GetMapping("/with-delay")
-    public ResponseEntity<ProductResponseDto> getAllProductsWithDelay() {
-        ProductResponseDto response = productService.getAllProductsWithDelay();
-        return ResponseEntity.ok(response);
+    public CompletableFuture<ResponseEntity<ProductResponseDto>> getAllProductsWithDelay() {
+
+        return productService.getAllProductsWithDelay()
+                .thenApply(response -> {
+                    if ("FALLBACK".equals(response.source())) {
+                        log.error(" FALLBACK - Productos predeterminados");
+                    } else {
+                        log.info("Respuesta exitosa");
+                    }
+                    return ResponseEntity.ok(response);
+                });
     }
-
-
 
 }
