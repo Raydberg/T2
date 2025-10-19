@@ -1,20 +1,29 @@
 name: EXAMEN-T2
 services:
-#  db:
-#    container_name: db-fitdesk
-#    image: postgres:16.1
-#    restart: always
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - db-data:/var/lib/postgresql/data
-#    environment:
-#      POSTGRES_USER: postgres
-#      POSTGRES_PASSWORD: postgres
-#      PGADMIN_DEFAULT_EMAIL: fitdesk@admin.com
-#      PGADMIN_DEFAULT_PASSWORD: fitdesk
-#    networks:
-#      - t2-network
+  db:
+    container_name: db-t2
+    image: postgres:16.1
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      PGADMIN_DEFAULT_EMAIL: t2@admin.com
+      PGADMIN_DEFAULT_PASSWORD: t2
+    networks:
+      - t2-network
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   config-server:
     container_name: config-server-t2
@@ -64,29 +73,6 @@ services:
       retries: 5
       start_period: 60s
 
-  gateway:
-    container_name: gateway-t2
-    build:
-      context: ./gateway
-      dockerfile: Dockerfile
-    restart: always
-    depends_on:
-      eureka-server:
-        condition: service_healthy
-      config-server:
-        condition: service_healthy
-    ports:
-      - "9090:9090"
-      - "5001:5005"
-    volumes:
-      - ./gateway:/app
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:7777
-      - MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
-    command: sh -c "chmod +x /app/mvnw && exec /app/mvnw -q  spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
-    networks:
-      - t2-network
-
   msvc-user:
     container_name: msvc-user
     build:
@@ -94,6 +80,8 @@ services:
       dockerfile: Dockerfile
     restart: always
     depends_on:
+      db:
+        condition: service_healthy
       eureka-server:
         condition: service_healthy
       config-server:
@@ -108,6 +96,7 @@ services:
       - MAVEN_OPTS=-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - SECRET_KEY=${SECRET_KEY}
     command: sh -c "chmod +x /app/mvnw && exec /app/mvnw -q  spring-boot:run -Dspring-boot.run.jvmArguments=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
     networks:
       - t2-network
@@ -135,6 +124,8 @@ services:
     networks:
       - t2-network
 
+volumes:
+  db-data:
 
 networks:
   t2-network:

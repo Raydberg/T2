@@ -6,9 +6,8 @@ spring:
       server:
         git:
           uri: "https://github.com/Raydberg/t2-secrets.git"
-          default-label: main
-          timeout: 5
           clone-on-start: true
+          default-label: main
 
 server:
   port: 7777
